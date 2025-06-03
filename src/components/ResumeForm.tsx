@@ -48,28 +48,9 @@ const ResumeForm: React.FC<ResumeFormProps> = ({
   });
 
   return (
-    <FormProvider {...methods}>
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="space-y-6">
-          <PersonalInfoSection />
-          <WorkSection />
-          <EducationSection />
-          <SkillsSection />
-          <ProjectsSection />
-          <QualificationsSection />
-          <OtherSection />
-        </div>
-        
-        <div className="flex justify-end">
-          <button 
-            type="submit" 
-            className="bg-teal-600 hover:bg-teal-700 text-white py-2 px-4 rounded transition-colors"
-          >
-            Save and Preview Resume/CV
-          </button>
-        </div>
-      </form>
-    </FormProvider>
+    <div>
+      <h1>Resume Form</h1>
+    </div>
   );
 };
 

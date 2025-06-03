@@ -623,56 +623,6 @@ const PersonalInfoSection: React.FC = () => {
           </FormItem>
         )}
       />
-      
-      {/* SA Citizenship */}
-      <div className="space-y-4">
-        <FormField
-          control={control}
-          name="personalInfo.isSACitizen"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel>South African Citizenship</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={(value) => field.onChange(value === 'yes')}
-                  value={field.value ? 'yes' : 'no'}
-                  className="flex flex-row space-x-4"
-                >
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="yes" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Yes</FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="no" />
-                    </FormControl>
-                    <FormLabel className="font-normal">No</FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        {!isSACitizen && (
-          <FormField
-            control={control}
-            name="personalInfo.workPermitNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Work Permit Number</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter your work permit number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-      </div>
     </div>
   );
 };

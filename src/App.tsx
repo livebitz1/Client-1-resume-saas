@@ -60,25 +60,25 @@ const App = () => {
         <BrowserRouter>
           <SmartNavigation />
           <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/resume/builder" element={<Index />} />
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/jobs/:id" element={<JobDetails />} />
-              <Route path="/employer/dashboard" element={<EmployerDashboard />} />
-              <Route path="/employer/post-job" element={<PostJob />} />
-              <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
-              <Route path="/payment" element={<PaymentPage />} />
-              <Route path="/subscription-plans" element={<SubscriptionPlans />} />
-              <Route path="/resume/upload" element={<ResumeUpload />} />
-              <Route path="/cover-letter/generate" element={<CoverLetterGenerator />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/help-centre" element={<HelpCentre />} />
-              <Route path="/blog" element={<Blog />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/resume/builder" element={<Index />} />
+            <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs/:id" element={<JobDetails />} />
+            <Route path="/employer/dashboard" element={<EmployerDashboard />} />
+            <Route path="/employer/post-job" element={<PostJob />} />
+            <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
+            <Route path="/payment" element={<PaymentPage />} />
+            <Route path="/subscription-plans" element={<SubscriptionPlans />} />
+            <Route path="/resume/upload" element={<ResumeUpload />} />
+            <Route path="/cover-letter/generate" element={<CoverLetterGenerator />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/help-centre" element={<HelpCentre />} />
+            <Route path="/blog" element={<Blog />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
           </Suspense>
           
           {/* Walkthrough component */}
