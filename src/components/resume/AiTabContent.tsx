@@ -1,10 +1,9 @@
-
-import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import AiResumeSuggestions from "@/components/AiResumeSuggestions";
 import JobMatchScore from "@/components/JobMatchScore";
-import ResumePreview from "@/components/ResumePreview";
-import { ResumeData } from "@/types/resume";
 import AiTips from "./AiTips";
 
 interface AiTabContentProps {
@@ -14,28 +13,36 @@ interface AiTabContentProps {
 }
 
 const AiTabContent = ({ resumeData, templateId, onApplySuggestions }: AiTabContentProps) => {
+  const [activeTab, setActiveTab] = useState("suggestions");
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="lg:col-span-1">
-        <AiResumeSuggestions onApplySuggestions={onApplySuggestions} />
-        
-        <div className="mt-6">
-          <JobMatchScore resumeData={resumeData} />
-        </div>
-        
-        <div className="mt-6">
-          <AiTips />
-        </div>
-      </div>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Resume Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+                <TabsTrigger value="tips">AI Tips</TabsTrigger>
+              </TabsList>
+              <TabsContent value="suggestions">
+                <AiResumeSuggestions 
+                  resumeData={resumeData}
+                  onApplySuggestions={onApplySuggestions}
+                />
+              </TabsContent>
+              <TabsContent value="tips">
+                <AiTips />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
-      <Card className="lg:col-span-1 overflow-hidden h-[800px]">
-        <CardContent className="p-0 h-full">
-          <ResumePreview 
-            data={resumeData} 
-            templateId={templateId} 
-          />
-        </CardContent>
-      </Card>
+        <JobMatchScore resumeData={resumeData} />
+      </div>
     </div>
   );
 };

@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ResumeData } from "@/types/resume";
-import ResumePreview from "@/components/ResumePreview";
 import { toast } from "sonner";
 import { colorThemes, defaultSectionNames, layoutStyles, paperStyles } from "./designer/designConstants";
 import AppearanceTabContent from "./designer/AppearanceTabContent";
@@ -94,20 +92,32 @@ const CvDesignerTabContent: React.FC<CvDesignerTabContentProps> = ({
     };
   }, [font, colorTheme, fontSize, spacing, layout, paperStyle, showBorders, boldHeadings, compactDates]);
   
+  const [activeTab, setActiveTab] = useState("layout");
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="lg:col-span-1 space-y-6">
+    <div className="grid grid-cols-1 gap-6">
+      <div className="space-y-6">
         <Card>
-          <CardContent className="p-6">
-            <Tabs defaultValue="appearance">
-              <TabsList className="mb-4">
-                <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <CardHeader>
+            <CardTitle>Resume Designer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="layout">Layout</TabsTrigger>
-                <TabsTrigger value="sections">Sections</TabsTrigger>
-                <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                <TabsTrigger value="theme">Theme</TabsTrigger>
               </TabsList>
-              
-              <TabsContent value="appearance">
+              <TabsContent value="layout">
+                <LayoutTabContent 
+                  layout={layout}
+                  setLayout={setLayout}
+                  showBorders={showBorders}
+                  setShowBorders={setShowBorders}
+                  compactDates={compactDates}
+                  setCompactDates={setCompactDates}
+                />
+              </TabsContent>
+              <TabsContent value="theme">
                 <AppearanceTabContent 
                   font={font}
                   setFont={setFont}
@@ -123,35 +133,7 @@ const CvDesignerTabContent: React.FC<CvDesignerTabContentProps> = ({
                   setBoldHeadings={setBoldHeadings}
                 />
               </TabsContent>
-              
-              <TabsContent value="layout">
-                <LayoutTabContent 
-                  layout={layout}
-                  setLayout={setLayout}
-                  showBorders={showBorders}
-                  setShowBorders={setShowBorders}
-                  compactDates={compactDates}
-                  setCompactDates={setCompactDates}
-                />
-              </TabsContent>
-              
-              <TabsContent value="sections">
-                <SectionsTabContent 
-                  sections={sections}
-                  setSections={setSections}
-                  sectionNames={sectionNames}
-                  handleSectionRename={handleSectionRename}
-                />
-              </TabsContent>
-              
-              <TabsContent value="advanced">
-                <AdvancedTabContent />
-              </TabsContent>
             </Tabs>
-            
-            <div className="mt-6 pt-4 border-t flex justify-end">
-              <Button onClick={handleSaveDesign}>Save Design</Button>
-            </div>
           </CardContent>
         </Card>
         
@@ -172,15 +154,6 @@ const CvDesignerTabContent: React.FC<CvDesignerTabContentProps> = ({
           </CardContent>
         </Card>
       </div>
-      
-      <Card className="lg:col-span-1 overflow-hidden h-[800px]">
-        <CardContent className="p-0 h-full">
-          <ResumePreview 
-            data={resumeData} 
-            templateId={templateId} 
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 };

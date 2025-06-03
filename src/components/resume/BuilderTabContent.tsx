@@ -1,8 +1,6 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import ResumeForm from "@/components/ResumeForm";
-import ResumePreview from "@/components/ResumePreview";
 import CVUploadParser from "@/components/CVUploadParser";
 import { ResumeData } from "@/types/resume";
 
@@ -39,7 +37,7 @@ const BuilderTabContent = ({ resumeData, templateId, onUpdateResume }: BuilderTa
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <Card className="lg:col-span-1 overflow-hidden">
         <CardContent className="p-0">
           <div className="p-6 space-y-6">
@@ -50,15 +48,6 @@ const BuilderTabContent = ({ resumeData, templateId, onUpdateResume }: BuilderTa
               selectedTemplate={templateId}
             />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-1 overflow-hidden h-[800px]">
-        <CardContent className="p-0 h-full">
-          <ResumePreview 
-            data={resumeData} 
-            templateId={templateId} 
-          />
         </CardContent>
       </Card>
     </div>
