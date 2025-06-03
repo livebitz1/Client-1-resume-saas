@@ -1,156 +1,253 @@
-"use client" // This makes the entire file a Client Component module.
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Upload, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import type React from "react"
-import { useActionState, useRef, useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
-import { Upload, FileText, Loader2, CheckCircle, Sparkles, AlertTriangle } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
-
-// --- Type Definitions (originally from app/actions/resume-types.ts) ---
-export interface ResumeAnalysisState {
-  message?: string
-  data?: any // This will hold the final data from OpenAI
-  error?: string
-  rawEdenAIResponse?: any // For debugging Eden AI's direct output
-  rawOpenAIResponse?: any // For debugging OpenAI's direct output
-}
-
-export const initialState: ResumeAnalysisState = {
-  message: undefined,
-  data: undefined,
-  error: undefined,
-  rawEdenAIResponse: undefined,
-  rawOpenAIResponse: undefined,
-}
-
-// --- IMPORTANT: Server Action Placeholder ---
-// The actual Server Action 'analyzeAndEnhanceResumeAction' MUST be in a separate file
-// (e.g., 'app/actions.ts') with "use server"; at the top.
-// You would then import it here:
-// import { analyzeAndEnhanceResumeAction } from "./actions"; // Assuming actions.ts is in app/
-// For now, we'll use a placeholder. Replace with actual import.
-
-// Placeholder function - replace with import from your 'actions.ts'
-async function analyzeAndEnhanceResumeActionPlaceholder(
-  prevState: ResumeAnalysisState,
-  formData: FormData,
-): Promise<ResumeAnalysisState> {
-  console.warn("Using placeholder Server Action. Implement and import the real one from 'app/actions.ts'.")
-  // Simulate a delay and error for demonstration if not replaced
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-  return {
-    ...initialState,
-    error: "Placeholder Action: Real Server Action not implemented or imported. See instructions.",
-  }
-}
-
-// --- CVUploadParser Component (originally from components/cv-upload-parser.tsx) ---
 interface CVUploadParserProps {
-  onDataProcessed: (data: any) => void
-  // This prop is to use the actual server action.
-  // It's passed down because server actions cannot be defined in 'use client' files.
-  actualFormAction: (prevState: ResumeAnalysisState, formData: FormData) => Promise<ResumeAnalysisState>
+  onDataParsed: (data: any) => void;
 }
 
-const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataProcessed, actualFormAction }) => {
-  const [state, formAction, isPending] = useActionState(actualFormAction, initialState)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
-  const [selectedFileSize, setSelectedFileSize] = useState<string | null>(null)
+const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [parsedSuccessfully, setParsedSuccessfully] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const allowedTypes = [
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ]
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Please upload a PDF or Word document.")
-        if (fileInputRef.current) fileInputRef.current.value = ""
-        setSelectedFileName(null)
-        setSelectedFileSize(null)
-        return
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
-        toast.error("File size must be less than 5MB.")
-        if (fileInputRef.current) fileInputRef.current.value = ""
-        setSelectedFileName(null)
-        setSelectedFileSize(null)
-        return
-      }
-      setSelectedFileName(file.name)
-      setSelectedFileSize((file.size / 1024 / 1024).toFixed(2) + " MB")
-    } else {
-      setSelectedFileName(null)
-      setSelectedFileSize(null)
+  const transformEdenAIData = (providerResult: any) => {
+    const rawExtractedData = providerResult?.extracted_data;
+
+    if (!rawExtractedData) {
+      console.error(
+        "transformEdenAIData: 'extracted_data' object is missing in the provider's result.",
+        JSON.stringify(providerResult, null, 2)
+      );
+      return null;
     }
-  }
 
-  useEffect(() => {
-    if (!isPending) {
-      if (state.error) {
-        toast.error(state.error)
-      }
-      if (state.message && state.data) {
-        toast.success(state.message)
-        onDataProcessed(state.data)
-      }
+    const personalInformation = {
+      name: rawExtractedData.personal_infos?.name?.raw_name || '',
+      firstName: rawExtractedData.personal_infos?.name?.first_name || '',
+      lastName: rawExtractedData.personal_infos?.name?.last_name || '',
+      email: rawExtractedData.personal_infos?.mails?.[0] || '',
+      phone: rawExtractedData.personal_infos?.phones?.[0] || '',
+      linkedin: rawExtractedData.personal_infos?.urls?.find((url: string) => url.includes("linkedin.com")) || '',
+      github: rawExtractedData.personal_infos?.urls?.find((url: string) => url.includes("github.com")) || '',
+      website: rawExtractedData.personal_infos?.urls?.find(
+        (url: string) => !url.includes("linkedin.com") && !url.includes("github.com")
+      ) || '',
+      address: rawExtractedData.personal_infos?.address?.raw_input_location || '',
+      summary: rawExtractedData.personal_infos?.self_summary || ''
+    };
+
+    const workExperience = rawExtractedData.work_experience?.entries?.map((exp: any) => ({
+      jobTitle: exp.title || '',
+      company: exp.company || '',
+      location: exp.location?.raw_input_location || '',
+      startDate: exp.start_date || '',
+      endDate: exp.end_date || '',
+      description: exp.description || '',
+      industry: exp.industry || ''
+    })) || [];
+
+    const education = rawExtractedData.education?.entries?.map((edu: any) => ({
+      degree: edu.title || edu.accreditation || '',
+      institution: edu.establishment || '',
+      location: edu.location?.raw_input_location || '',
+      graduationDate: edu.end_date || '',
+      startDate: edu.start_date || '',
+      gpa: edu.gpa || '',
+      details: edu.description || '',
+      major: edu.title && edu.accreditation ? edu.title : undefined
+    })) || [];
+
+    const skills = rawExtractedData.skills?.map((skill: any) => ({
+      name: skill.name || '',
+      type: skill.type || ''
+    })) || [];
+
+    const languages = rawExtractedData.languages?.map((lang: any) => ({
+      language: lang.name || ''
+    })) || [];
+
+    const certifications = rawExtractedData.certifications?.map((cert: any) => ({
+      name: cert.name || ''
+    })) || [];
+
+    return {
+      personalInformation,
+      workExperience,
+      education,
+      skills,
+      languages,
+      certifications
+    };
+  };
+
+  const parseResumeWithEdenAI = async (file: File) => {
+    const EDEN_AI_API_KEY = import.meta.env.VITE_EDEN_AI_API_KEY;
+    if (!EDEN_AI_API_KEY) {
+      throw new Error('Eden AI API key is not configured');
     }
-  }, [state, isPending, onDataProcessed])
 
-  const handleSubmitClick = () => {
-    // Optional: Reset display immediately on click
-  }
+    try {
+      const formData = new FormData();
+      formData.append('providers', 'affinda');
+      formData.append('file', file);
+      formData.append('fallback_providers', '');
+
+      const response = await fetch('https://api.edenai.run/v2/ocr/resume_parser', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${EDEN_AI_API_KEY}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        let errorMessage;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error?.message || 'Failed to parse resume';
+        } catch {
+          errorMessage = `API Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      
+      // Find successful provider result
+      let providerResult = null;
+      if (data.affinda && data.affinda.status === 'success') {
+        providerResult = data.affinda;
+      }
+
+      if (!providerResult) {
+        throw new Error('No successful provider data found');
+      }
+
+      return providerResult;
+    } catch (error) {
+      console.error('Eden AI API Error:', error);
+      throw error;
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload a PDF or Word document');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      event.target.value = '';
+      return;
+    }
+
+    setUploadedFile(file);
+    setIsUploading(true);
+    setParsedSuccessfully(false);
+    setError(null);
+
+    try {
+      const parsedData = await parseResumeWithEdenAI(file);
+      const transformedData = transformEdenAIData(parsedData);
+
+      if (!transformedData) {
+        throw new Error('Failed to transform parsed data');
+      }
+
+      onDataParsed(transformedData);
+      setParsedSuccessfully(true);
+      toast.success('Resume/CV parsed successfully! Your information has been extracted and populated into the form.');
+
+    } catch (error) {
+      console.error('Error parsing Resume/CV:', error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Failed to parse Resume/CV. Please ensure your PDF is readable and try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
+
+    setIsUploading(false);
+    event.target.value = '';
+  };
+
+  const resetUpload = () => {
+    setUploadedFile(null);
+    setParsedSuccessfully(false);
+    setError(null);
+  };
 
   return (
     <Card className="w-full mb-6 border-2 border-dashed border-teal-200 bg-gradient-to-br from-teal-50 to-blue-50">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center justify-center gap-2 text-teal-700">
           <Sparkles className="h-5 w-5" />
-          AI-Powered Resume Enhancer
+          AI-Powered Resume/CV Parser
         </CardTitle>
-        <CardDescription className="text-sm text-gray-600">
-          Upload your Resume/CV. Our AI will parse it, then enhance it into a professional format.
-        </CardDescription>
+        <p className="text-sm text-gray-600">
+          Upload your existing Resume/CV and let our AI extract and organize your information automatically
+        </p>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4">
-          {!selectedFileName && !isPending && !state.data ? (
+        <div className="space-y-4">
+          {!uploadedFile ? (
             <div className="border-2 border-dashed border-teal-300 rounded-lg p-8 text-center bg-white/50">
               <Upload className="h-12 w-12 text-teal-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Upload Your Resume/CV</h3>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                Upload Your Resume/CV
+              </h3>
               <p className="text-sm text-gray-500 mb-6">
-                Our AI will extract key information and then generate a professional summary, enhanced work experience,
-                and key skills.
+                Our AI will extract your professional information including work experience,
+                education, skills, and create a compelling professional summary
               </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="flex items-center justify-center text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Professional Summary
+                </div>
+                <div className="flex items-center justify-center text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Work Experience
+                </div>
+                <div className="flex items-center justify-center text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  Skills & Education
+                </div>
+              </div>
+
               <Input
                 type="file"
-                name="resumeFile"
                 accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-                disabled={isPending}
+                onChange={handleFileUpload}
+                disabled={isUploading}
                 className="hidden"
-                id="cv-upload-input"
-                ref={fileInputRef}
-                required
+                id="cv-upload"
               />
-              <label htmlFor="cv-upload-input">
+              <label htmlFor="cv-upload">
                 <Button
                   type="button"
                   size="lg"
-                  disabled={isPending}
+                  disabled={isUploading}
                   className="cursor-pointer bg-teal-600 hover:bg-teal-700 text-white"
-                  onClick={() => fileInputRef.current?.click()}
+                  asChild
                 >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Choose Resume/CV File
+                  <span>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isUploading ? 'Uploading...' : 'Choose Resume/CV File'}
+                  </span>
                 </Button>
               </label>
             </div>
@@ -158,158 +255,76 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataProcessed, actual
             <div className="bg-white rounded-lg p-6 border border-teal-200">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  {state.data && !isPending ? (
+                  {parsedSuccessfully ? (
                     <CheckCircle className="h-8 w-8 text-green-500" />
-                  ) : isPending ? (
+                  ) : isUploading ? (
                     <Loader2 className="h-8 w-8 text-teal-500 animate-spin" />
-                  ) : selectedFileName ? (
-                    <FileText className="h-8 w-8 text-teal-500" />
                   ) : (
-                    <Upload className="h-8 w-8 text-gray-400" />
+                    <FileText className="h-8 w-8 text-teal-500" />
                   )}
                   <div>
-                    <p className="font-medium text-gray-900">{selectedFileName || "No file selected"}</p>
-                    {selectedFileSize && <p className="text-sm text-gray-500">{selectedFileSize}</p>}
+                    <p className="font-medium text-gray-900">
+                      {uploadedFile.name}
+                    </p>
+                    {uploadedFile && (
+                      <p className="text-sm text-gray-500">
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    )}
                   </div>
                 </div>
-                {!isPending && selectedFileName && (
+                {!isUploading && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setSelectedFileName(null)
-                      setSelectedFileSize(null)
-                      if (fileInputRef.current) fileInputRef.current.value = ""
-                    }}
+                    onClick={resetUpload}
                     className="text-gray-600"
                   >
-                    Change File
+                    Upload Different File
                   </Button>
                 )}
               </div>
 
-              {isPending && (
-                <div className="space-y-3 my-4">
+              {isUploading && (
+                <div className="space-y-3">
                   <div className="flex items-center justify-center text-teal-600">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    <span className="text-sm font-medium">AI Processing: Parsing & Enhancing...</span>
+                    <span className="text-sm font-medium">Parsing your Resume/CV with AI...</span>
                   </div>
-                  <Progress value={undefined} className="w-full h-2" />
                   <div className="text-xs text-gray-500 text-center">
-                    Step 1: Extracting data with Eden AI...
-                    <br />
-                    Step 2: Generating professional template with OpenAI...
+                    Extracting professional summary, work experience, education, and skills
                   </div>
                 </div>
               )}
 
-              {selectedFileName && !isPending && !state.data && (
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white mt-4"
-                  onClick={handleSubmitClick}
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Analyze and Enhance Resume
-                </Button>
+              {parsedSuccessfully && (
+                <div className="text-center">
+                  <p className="text-green-600 font-medium mb-2">
+                    ✓ Resume/CV Successfully Parsed!
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Your information has been extracted and populated in the form below.
+                    Review and edit as needed.
+                  </p>
+                </div>
+              )}
+
+              {error && !isUploading && (
+                <div className="text-center text-red-600 text-sm mt-4">
+                  Error: {error}
+                </div>
               )}
             </div>
           )}
 
-          <div className="text-xs text-gray-500 text-center mt-4">
+          <div className="text-xs text-gray-500 text-center">
             <p className="font-medium mb-1">Supported formats:</p>
             <p>PDF, DOC, DOCX (Maximum 5MB)</p>
           </div>
-
-          {!isPending && state.error && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Processing Error</AlertTitle>
-              <AlertDescription>
-                {state.error}
-                {(state.rawEdenAIResponse || state.rawOpenAIResponse) && (
-                  <details className="mt-2 text-xs">
-                    <summary className="cursor-pointer">Show Raw Error Details</summary>
-                    {state.rawEdenAIResponse && (
-                      <pre className="mt-1 p-2 bg-gray-100 rounded overflow-x-auto max-h-40">
-                        Eden AI Raw: {JSON.stringify(state.rawEdenAIResponse, null, 2)}
-                      </pre>
-                    )}
-                    {state.rawOpenAIResponse && (
-                      <pre className="mt-1 p-2 bg-gray-100 rounded overflow-x-auto max-h-40">
-                        OpenAI Raw: {JSON.stringify(state.rawOpenAIResponse, null, 2)}
-                      </pre>
-                    )}
-                  </details>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {!isPending && state.message && state.data && (
-            <Alert variant="default" className="mt-4 bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4" />
-              <AlertTitle className="text-green-700">Processing Complete!</AlertTitle>
-              <AlertDescription>
-                {state.message}
-                <div className="mt-2 p-2 border rounded bg-white max-h-96 overflow-y-auto">
-                  <h4 className="font-semibold mb-1">Enhanced Resume Data:</h4>
-                  <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(state.data, null, 2)}</pre>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-        </form>
+        </div>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
-// --- HomePage Component (originally from app/page.tsx) ---
-export default function HomePage() {
-  const [processedData, setProcessedData] = useState<any>(null)
-
-  const handleDataProcessed = (data: any) => {
-    console.log("Data processed and received in HomePage:", data)
-    setProcessedData(data) // You can now use this state to display the data elsewhere on the page
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-sky-100 py-8 px-4 flex flex-col items-center">
-      <header className="mb-12 text-center">
-        <h1 className="text-5xl font-bold text-gray-800">AI Resume Analyzer</h1>
-        <p className="text-xl text-gray-600 mt-2">Instantly extract key information from your CV</p>
-      </header>
-
-      {/* 
-        IMPORTANT: Pass the actual Server Action here.
-        You'll need to create 'app/actions.ts', put 'analyzeAndEnhanceResumeAction' there,
-        mark it with 'use server', and then import it at the top of this file.
-        For now, it uses a placeholder.
-      */}
-      <CVUploadParser
-        onDataProcessed={handleDataProcessed}
-        actualFormAction={analyzeAndEnhanceResumeActionPlaceholder} // Replace with imported actual action
-      />
-
-      {/* Optional: Display processedData if needed */}
-      {/* {processedData && (
-        <Card className="w-full max-w-2xl mt-8">
-          <CardHeader>
-            <CardTitle>Processed Resume Output</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-4 rounded">
-              {JSON.stringify(processedData, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )} */}
-
-      <footer className="mt-16 text-center text-sm text-gray-500">
-        <p>&copy; {new Date().getFullYear()} CV Analyzer. Powered by Vercel and Supabase.</p>
-      </footer>
-    </div>
-  )
-}
+export default CVUploadParser;
