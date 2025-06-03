@@ -95,7 +95,7 @@ interface CVUploadParserProps {
   onParsingError: (errorMsg: string) => void
 }
 
-// --- CVUploadParser Component (Updated from your attachment) ---
+// --- CVUploadParser Component ---
 const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsingStart, onParsingError }) => {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -182,7 +182,7 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
 
   const parseResumeWithEdenAI = async (file: File) => {
     setLocalError(null)
-    onParsingStart() // Notify parent
+    onParsingStart()
     setIsUploading(true)
     setParsedSuccessfully(false)
 
@@ -191,9 +191,9 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
       const errorMsg = "Eden AI API key is not configured. Set VITE_EDEN_AI_API_KEY in your .env file."
       toast.error(errorMsg)
       setLocalError(errorMsg)
-      onParsingError(errorMsg) // Notify parent
+      onParsingError(errorMsg)
       setIsUploading(false)
-      return // Exit early
+      return
     }
 
     const formData = new FormData()
@@ -218,17 +218,17 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
           const errorMsg = `Eden AI API Error: ${response.status} ${response.statusText}. Response: ${responseText.substring(0, 100)}...`
           toast.error(errorMsg)
           setLocalError(errorMsg)
-          onParsingError(errorMsg) // Notify parent
+          onParsingError(errorMsg)
           setIsUploading(false)
-          return // Exit early
+          return
         }
         console.error("Failed to parse Eden AI JSON response (but status was OK):", responseText)
         const errorMsg = "Invalid JSON response from Eden AI, even though status was OK."
         toast.error(errorMsg)
         setLocalError(errorMsg)
-        onParsingError(errorMsg) // Notify parent
+        onParsingError(errorMsg)
         setIsUploading(false)
-        return // Exit early
+        return
       }
 
       if (!response.ok) {
@@ -237,9 +237,9 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         console.error("Eden AI Error Response JSON/Text:", data || responseText)
         toast.error(`Eden AI API Error: ${errorMessage}`)
         setLocalError(errorMessage)
-        onParsingError(errorMessage) // Notify parent
+        onParsingError(errorMessage)
         setIsUploading(false)
-        return // Exit early
+        return
       }
 
       const providersToTry = ["affinda"]
@@ -254,28 +254,28 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
       if (providerResult) {
         const transformedData = transformEdenAIData(providerResult)
         if (transformedData) {
-          onDataParsed(transformedData) // Notify parent with data
+          onDataParsed(transformedData)
           setParsedSuccessfully(true)
           toast.success("Resume parsed successfully!")
         } else {
           const errorMsg = "Failed to transform parsed data from Eden AI."
           toast.error(errorMsg)
           setLocalError(errorMsg)
-          onParsingError(errorMsg) // Notify parent
+          onParsingError(errorMsg)
         }
       } else {
         const errorMsg = data?.error?.message || data?.detail || "Eden AI parsing failed for specified providers."
         console.error("Eden AI Provider Error:", data)
         toast.error(errorMsg)
         setLocalError(errorMsg)
-        onParsingError(errorMsg) // Notify parent
+        onParsingError(errorMsg)
       }
     } catch (error: any) {
       console.error("Error during Eden AI API call:", error)
       const errorMsg = `Error during API call: ${error.message}`
       toast.error(errorMsg)
       setLocalError(errorMsg)
-      onParsingError(errorMsg) // Notify parent
+      onParsingError(errorMsg)
     } finally {
       setIsUploading(false)
     }
@@ -284,7 +284,6 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Basic client-side validation before calling API
       const allowedTypes = [
         "application/pdf",
         "application/msword",
@@ -294,8 +293,8 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         const err = "Please upload a PDF or Word document."
         toast.error(err)
         setLocalError(err)
-        onParsingError(err) // Notify parent
-        if (event.target) event.target.value = "" // Clear the input
+        onParsingError(err)
+        if (event.target) event.target.value = ""
         return
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -303,14 +302,14 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         const err = "File size must be less than 5MB."
         toast.error(err)
         setLocalError(err)
-        onParsingError(err) // Notify parent
-        if (event.target) event.target.value = "" // Clear the input
+        onParsingError(err)
+        if (event.target) event.target.value = ""
         return
       }
       setUploadedFile(file)
       await parseResumeWithEdenAI(file)
     }
-    if (event.target) event.target.value = "" // Clear input after processing to allow re-upload of same file
+    if (event.target) event.target.value = ""
   }
 
   const resetUpload = () => {
@@ -318,8 +317,8 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
     setIsUploading(false)
     setParsedSuccessfully(false)
     setLocalError(null)
-    onDataParsed(null) // Clear parent data
-    onParsingError("") // Clear parent error
+    onDataParsed(null)
+    onParsingError("")
     const fileInput = document.getElementById("file-upload") as HTMLInputElement
     if (fileInput) fileInput.value = ""
   }
@@ -355,16 +354,19 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         : "Our AI will extract your professional information."
 
   return (
-    <Card className="w-full shadow-md dark:bg-gray-800">
+    <Card className="w-full shadow-md dark:bg-gray-800 mb-6 md:mb-8">
       <CardHeader className="text-center pb-4">
         <CardTitle className="text-xl font-semibold text-teal-600 dark:text-teal-400">AI Resume Parser</CardTitle>
         <CardDescription className="text-sm text-gray-500 dark:text-gray-400">PDF, DOC, DOCX - Max 5MB</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center p-4">
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center w-full">
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center w-full max-w-md">
           <div className="flex justify-center mb-3">{fileUploadIcon}</div>
           <p className="text-md font-medium text-gray-700 dark:text-gray-200 mb-1">{uploadText}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate w-full px-2" title={uploadDescription}>
+          <p
+            className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate w-full px-2"
+            title={uploadDescription || undefined}
+          >
             {uploadDescription}
           </p>
           <Input
@@ -379,12 +381,12 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
               htmlFor="file-upload"
               className="inline-flex items-center px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-teal-700 cursor-pointer"
             >
-              <Upload className="mr-1.5 h-4 w-4" />
-              Choose File
+              <Upload className="mr-1.5 h-4 w-4" /> Choose File
             </label>
             {(uploadedFile || localError) && (
               <Button variant="outline" size="sm" className="px-3 py-2 text-sm" onClick={resetUpload}>
-                Reset
+                {" "}
+                Reset{" "}
               </Button>
             )}
           </div>
@@ -395,7 +397,7 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
 }
 
 // --- ResumePreviewCard Component ---
-const ResumePreviewCard: React.FC<any> = ({ data, isVisible }) => {
+const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: boolean }> = ({ data, isVisible }) => {
   if (!isVisible || !data) {
     return null
   }
@@ -423,39 +425,29 @@ const ResumePreviewCard: React.FC<any> = ({ data, isVisible }) => {
     content: React.ReactNode,
     sectionKey: string,
     isEmpty: boolean,
-  ) => {
-    if (isEmpty) {
-      return (
-        <AccordionItem value={sectionKey} key={sectionKey} className="border-b dark:border-gray-700">
-          <AccordionTrigger className="text-md font-medium hover:no-underline text-gray-700 dark:text-gray-300 py-3">
-            <div className="flex items-center gap-2">
-              {React.createElement(icon, { className: "h-5 w-5 text-teal-500 dark:text-teal-400" })} {title}
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-1 pb-3 text-sm text-gray-500 dark:text-gray-400">
+  ) => (
+    <AccordionItem value={sectionKey} key={sectionKey} className="border-b dark:border-gray-700">
+      <AccordionTrigger className="text-md font-medium hover:no-underline text-gray-700 dark:text-gray-300 py-3">
+        <div className="flex items-center gap-2">
+          {React.createElement(icon, { className: "h-5 w-5 text-teal-500 dark:text-teal-400" })} {title}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="pt-1 pb-3 text-sm space-y-2">
+        {isEmpty ? (
+          <span className="text-gray-500 dark:text-gray-400">
             No {title.toLowerCase()} information provided or extracted.
-          </AccordionContent>
-        </AccordionItem>
-      )
-    }
-    return (
-      <AccordionItem value={sectionKey} key={sectionKey} className="border-b dark:border-gray-700">
-        <AccordionTrigger className="text-md font-medium hover:no-underline text-gray-700 dark:text-gray-300 py-3">
-          <div className="flex items-center gap-2">
-            {React.createElement(icon, { className: "h-5 w-5 text-teal-500 dark:text-teal-400" })} {title}
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="pt-1 pb-3 text-sm text-gray-600 dark:text-gray-300 space-y-2">
-          {content}
-        </AccordionContent>
-      </AccordionItem>
-    )
-  }
+          </span>
+        ) : (
+          content
+        )}
+      </AccordionContent>
+    </AccordionItem>
+  )
 
   const name = hasValidString(pi.name) ? pi.name : `${pi.firstName || ""} ${pi.lastName || ""}`.trim() || "N/A"
 
   return (
-    <Card className="sticky top-8 h-[calc(100vh-4rem)] shadow-xl dark:bg-gray-800 flex flex-col">
+    <Card className="w-full shadow-xl dark:bg-gray-800 flex flex-col">
       <CardHeader className="pb-4 border-b dark:border-gray-700">
         <CardTitle className="text-xl font-semibold text-gray-800 dark:text-white">Extracted Resume Details</CardTitle>
         <CardDescription className="text-gray-500 dark:text-gray-400">
@@ -467,7 +459,7 @@ const ResumePreviewCard: React.FC<any> = ({ data, isVisible }) => {
           {renderSection(
             "Personal Information",
             User,
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-gray-600 dark:text-gray-300">
               {hasValidString(name) && (
                 <p>
                   <strong>Name:</strong> {name}
@@ -542,7 +534,7 @@ const ResumePreviewCard: React.FC<any> = ({ data, isVisible }) => {
           {renderSection(
             "Summary",
             FileText,
-            <p className="whitespace-pre-line text-sm">{pi.summary}</p>,
+            <p className="whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">{pi.summary}</p>,
             "summary",
             !hasValidString(pi.summary),
           )}
@@ -631,7 +623,7 @@ const ResumePreviewCard: React.FC<any> = ({ data, isVisible }) => {
           {renderSection(
             "Languages",
             Languages,
-            <ul className="list-disc list-inside pl-1 space-y-0.5">
+            <ul className="list-disc list-inside pl-1 space-y-0.5 text-gray-600 dark:text-gray-300">
               {languages?.map((lang, index) => (
                 <li key={index}>
                   {lang.language}{" "}
@@ -647,10 +639,10 @@ const ResumePreviewCard: React.FC<any> = ({ data, isVisible }) => {
           {renderSection(
             "Certifications",
             Award,
-            <ul className="space-y-1.5">
+            <ul className="space-y-1.5 text-gray-600 dark:text-gray-300">
               {certifications?.map((cert, index) => (
                 <li key={index}>
-                  <p className="font-medium text-gray-700 dark:text-gray-200">{cert.name}</p>
+                  <p className="font-medium">{cert.name}</p>
                   {hasValidString(cert.issuingOrganization) && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">From: {cert.issuingOrganization}</p>
                   )}
@@ -677,20 +669,17 @@ function App() {
   const [parsingError, setParsingError] = useState<string | null>(null)
 
   const handleDataParsed = (data: ParsedResumeData | null) => {
-    // Allow null to clear data
     setParsedResumeData(data)
-    setIsPreviewVisible(!!data) // Show preview only if data is not null
+    setIsPreviewVisible(!!data)
     setIsParsing(false)
     setParsingError(null)
   }
-
   const handleParsingStart = () => {
     setIsParsing(true)
     setIsPreviewVisible(false)
     setParsedResumeData(null)
     setParsingError(null)
   }
-
   const handleParsingError = (errorMsg: string) => {
     setIsParsing(false)
     setIsPreviewVisible(false)
@@ -708,9 +697,12 @@ function App() {
           </p>
         </header>
 
-        <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
-          {/* Left column for uploader - Made smaller */}
-          <div className="w-full lg:w-1/3 xl:w-2/5">
+        {/* Main content area: Uploader above, Preview/Status below */}
+        <div className="flex flex-col gap-6 md:gap-8 items-center">
+          {/* Uploader Section - Centered and with a max-width */}
+          <div className="w-full max-w-2xl">
+            {" "}
+            {/* Adjusted for better centering and responsiveness */}
             <CVUploadParser
               onDataParsed={handleDataParsed}
               onParsingStart={handleParsingStart}
@@ -718,22 +710,22 @@ function App() {
             />
           </div>
 
-          {/* Right column for preview or placeholder - Given more space */}
-          <div className="w-full lg:w-2/3 xl:w-3/5">
+          {/* Preview or Status Section - Takes full width below uploader */}
+          <div className="w-full">
             {isParsing ? (
-              <Card className="sticky top-8 h-[calc(100vh-4rem)] overflow-y-auto shadow-lg dark:bg-gray-800 flex flex-col items-center justify-center">
+              <Card className="shadow-lg dark:bg-gray-800 flex flex-col items-center justify-center p-10">
                 <Loader2 className="h-12 w-12 text-teal-500 dark:text-teal-400 animate-spin mb-4" />
                 <p className="text-lg text-gray-700 dark:text-gray-300">Analyzing Resume...</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Please wait a moment.</p>
               </Card>
             ) : parsingError && !isPreviewVisible ? (
-              <Card className="sticky top-8 h-[calc(100vh-4rem)] overflow-y-auto shadow-lg dark:bg-gray-800 border-red-500 border-2">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+              <Card className="shadow-lg dark:bg-gray-800 border-red-500 border-2 p-10">
+                <CardHeader className="p-0 pb-4 text-center">
+                  <CardTitle className="text-xl font-semibold text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
                     <AlertTriangle /> Parsing Failed
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center h-3/4">
+                <CardContent className="p-0 flex flex-col items-center justify-center">
                   <FileText size={48} className="text-red-400 dark:text-red-500 mb-4" />
                   <p className="text-red-500 dark:text-red-400 text-center px-4">{parsingError}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -744,8 +736,9 @@ function App() {
             ) : isPreviewVisible && parsedResumeData ? (
               <ResumePreviewCard data={parsedResumeData} isVisible={true} />
             ) : (
-              <Card className="sticky top-8 h-[calc(100vh-4rem)] overflow-y-auto shadow-lg dark:bg-gray-800 hidden lg:flex lg:flex-col lg:items-center lg:justify-center">
-                <CardHeader className="text-center">
+              <Card className="shadow-lg dark:bg-gray-800 hidden md:flex flex-col items-center justify-center p-10">
+                {/* Hidden on small screens, shown on md and up */}
+                <CardHeader className="p-0 pb-4 text-center">
                   <CardTitle className="text-xl font-semibold text-gray-500 dark:text-gray-400">
                     Resume Preview
                   </CardTitle>
@@ -753,7 +746,7 @@ function App() {
                     Upload a resume to see the extracted details here.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center flex-grow">
+                <CardContent className="p-0 flex flex-col items-center justify-center">
                   <FileText size={48} className="text-gray-400 dark:text-gray-500 mb-4" />
                   <p className="text-gray-500 dark:text-gray-400">Awaiting resume upload...</p>
                 </CardContent>
