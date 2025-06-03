@@ -1,0 +1,116 @@
+
+/* Default design variables */
+:root {
+  --resume-font-family: sans-serif;
+  --resume-color-primary: #1a56db;
+  --resume-color-secondary: #e2e8f0;
+  --resume-font-size-factor: 1;
+  --resume-line-spacing: 1;
+  --resume-layout-style: standard;
+  --resume-paper-style: white;
+  --resume-show-borders: 0px;
+  --resume-heading-weight: 700;
+  --resume-date-display: full;
+}
+
+/* Classes that apply the design variables to resume templates */
+.resume-template {
+  font-family: var(--resume-font-family);
+  line-height: calc(1.5 * var(--resume-line-spacing));
+}
+
+.resume-template h1,
+.resume-template h2,
+.resume-template h3,
+.resume-template h4 {
+  color: var(--resume-color-primary);
+  font-weight: var(--resume-heading-weight);
+}
+
+.resume-template .section-heading {
+  border-bottom: 2px solid var(--resume-color-primary);
+}
+
+.resume-template .accent-bg {
+  background-color: var(--resume-color-secondary);
+}
+
+.resume-template .accent-border {
+  border-color: var(--resume-color-primary);
+}
+
+/* Font size adjustments based on the factor */
+.resume-template {
+  font-size: calc(1rem * var(--resume-font-size-factor));
+}
+
+.resume-template h1 {
+  font-size: calc(1.5rem * var(--resume-font-size-factor));
+}
+
+.resume-template h2 {
+  font-size: calc(1.25rem * var(--resume-font-size-factor));
+}
+
+.resume-template h3 {
+  font-size: calc(1.125rem * var(--resume-font-size-factor));
+}
+
+.resume-template p, .resume-template li {
+  font-size: calc(0.875rem * var(--resume-font-size-factor));
+}
+
+/* Paper styles */
+.resume-template[data-paper-style="white"] {
+  background-color: #ffffff;
+}
+
+.resume-template[data-paper-style="offwhite"] {
+  background-color: #f8f8f5;
+}
+
+.resume-template[data-paper-style="lightgray"] {
+  background-color: #f3f4f6;
+}
+
+.resume-template[data-paper-style="lightblue"] {
+  background-color: #f0f7ff;
+}
+
+/* Layout styles */
+.resume-template[data-layout="standard"] {
+  padding: 2rem;
+}
+
+.resume-template[data-layout="compact"] {
+  padding: 1rem;
+}
+
+.resume-template[data-layout="minimalist"] {
+  padding: 2.5rem;
+}
+
+.resume-template[data-layout="split"] {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+}
+
+/* Section borders */
+.resume-template .resume-section {
+  border: var(--resume-show-borders) solid var(--resume-color-primary);
+  padding: calc(var(--resume-show-borders) * 5);
+  margin-bottom: calc(1rem * var(--resume-font-size-factor));
+  border-radius: calc(var(--resume-show-borders) * 3);
+}
+
+/* Date display styles */
+.resume-template[data-date-display="compact"] .date-range {
+  font-size: calc(0.75rem * var(--resume-font-size-factor));
+}
+
+.resume-template[data-date-display="compact"] .date-separator {
+  display: none;
+}
+
+/* JavaScript to apply these attributes should be in a separate JS file, not in CSS */
