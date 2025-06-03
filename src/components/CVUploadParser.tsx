@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Upload, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase';
 
 interface CVUploadParserProps {
   onDataParsed: (data: any) => void;
@@ -49,25 +50,20 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed }) => {
         reader.readAsDataURL(file);
       });
 
-      const response = await fetch('/api/parse-resume', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error: supabaseError } = await supabase.functions.invoke('parse-resume-eden', {
+        body: {
           file: fileBase64,
           filename: file.name,
-          fileType: file.type
-        })
+          fileType: file.type,
+        },
       });
 
-      if (!response.ok) {
-         const errorText = await response.text();
-         console.error('Backend API error:', response.status, errorText);
-         throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
+      if (supabaseError) {
+        console.error('Supabase function error:', supabaseError);
+        throw new Error(`Supabase function error: ${supabaseError.message}`);
       }
 
-      const parsedData = await response.json();
+      const parsedData = data;
 
       if (parsedData.success) {
         onDataParsed(parsedData.resumeData);
