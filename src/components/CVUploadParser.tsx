@@ -186,9 +186,9 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
     setIsUploading(true)
     setParsedSuccessfully(false)
 
-    const EDEN_AI_API_KEY = import.meta.env.EDEN_AI_API_KEY
+    const EDEN_AI_API_KEY = import.meta.env.VITE_EDEN_AI_API_KEY
     if (!EDEN_AI_API_KEY) {
-      const errorMsg = "Eden AI API key is not configured. Set EDEN_AI_API_KEY in your .env file."
+      const errorMsg = "Eden AI API key is not configured. Set VITE_EDEN_AI_API_KEY in your .env file."
       toast.error(errorMsg)
       setLocalError(errorMsg)
       onParsingError(errorMsg)
