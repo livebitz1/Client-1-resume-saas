@@ -34,6 +34,7 @@ import {
   Users,
   FileSignature,
   Save,
+  Download,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -72,7 +73,7 @@ interface PersonalInformation {
 }
 
 interface WorkExperienceEntry {
-  id: string // Added for list key and state management
+  id: string
   jobTitle: string
   company: string
   location: string
@@ -83,7 +84,7 @@ interface WorkExperienceEntry {
 }
 
 interface EducationEntry {
-  id: string // Added for list key and state management
+  id: string
   degree: string
   institution: string
   location: string
@@ -95,37 +96,39 @@ interface EducationEntry {
 }
 
 interface SkillEntry {
-  id: string // Added for list key and state management
+  id: string
   name: string
   type: string
 }
 
 interface LanguageEntry {
-  id: string // Added for list key and state management
+  id: string
   language: string
   proficiency?: string
 }
 
 interface CertificationEntry {
-  id: string // Added for list key and state management
+  id: string
   name: string
   issuingOrganization?: string
   issueDate?: string
 }
 
 interface ProjectEntry {
-  id: string // Added for list key and state management
+  id: string
   name: string
   description?: string
+  url?: string
+  technologies?: string[]
 }
 
 interface InterestEntry {
-  id: string // Added for list key and state management
+  id: string
   name: string
 }
 
 interface ReferenceEntry {
-  id: string // Added for list key and state management
+  id: string
   name: string
   contact?: string
   relationship?: string
@@ -138,9 +141,9 @@ export interface ParsedResumeData {
   skills: SkillEntry[]
   languages: LanguageEntry[]
   certifications: CertificationEntry[]
-  projects?: ProjectEntry[]
-  interests?: InterestEntry[]
-  references?: ReferenceEntry[]
+  projects: ProjectEntry[]
+  interests: InterestEntry[]
+  references: ReferenceEntry[]
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9)
@@ -176,6 +179,51 @@ const createEmptyPersonalInformation = (): PersonalInformation => ({
   southAfricanCitizen: "",
 })
 
+const createEmptyWorkExperienceEntry = (): WorkExperienceEntry => ({
+  id: generateId(),
+  jobTitle: "",
+  company: "",
+  location: "",
+  startDate: "",
+  endDate: "",
+  description: "",
+  industry: "",
+})
+
+const createEmptyEducationEntry = (): EducationEntry => ({
+  id: generateId(),
+  degree: "",
+  institution: "",
+  location: "",
+  graduationDate: "",
+  startDate: "",
+  gpa: "",
+  details: "",
+})
+
+const createEmptySkillEntry = (): SkillEntry => ({ id: generateId(), name: "", type: "" })
+
+const createEmptyLanguageEntry = (): LanguageEntry => ({ id: generateId(), language: "", proficiency: "" })
+
+const createEmptyCertificationEntry = (): CertificationEntry => ({
+  id: generateId(),
+  name: "",
+  issuingOrganization: "",
+  issueDate: "",
+})
+
+const createEmptyProjectEntry = (): ProjectEntry => ({
+  id: generateId(),
+  name: "",
+  description: "",
+  url: "",
+  technologies: [],
+})
+
+const createEmptyInterestEntry = (): InterestEntry => ({ id: generateId(), name: "" })
+
+const createEmptyReferenceEntry = (): ReferenceEntry => ({ id: generateId(), name: "", contact: "", relationship: "" })
+
 const createEmptyParsedResumeData = (): ParsedResumeData => ({
   personalInformation: createEmptyPersonalInformation(),
   workExperience: [],
@@ -200,24 +248,22 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
   const [parsedSuccessfully, setParsedSuccessfully] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
-  const transformEdenAIData = (providerResult: any): ParsedResumeData | null => {
-    const rawExtractedData = providerResult?.extracted_data
-    if (!rawExtractedData) {
-      return null
-    }
+  const transformEdenAIData = (providerResult: any): ParsedResumeData => {
+    const rawExtractedData = providerResult?.extracted_data || {}
     const s = (value: any, defaultValue = "") => (typeof value === "string" ? value : defaultValue)
+    const arr = (value: any) => (Array.isArray(value) ? value : [])
 
     const personalInformation: PersonalInformation = {
       ...createEmptyPersonalInformation(),
       name: s(rawExtractedData.personal_infos?.name?.raw_name),
       firstName: s(rawExtractedData.personal_infos?.name?.first_name),
       lastName: s(rawExtractedData.personal_infos?.name?.last_name),
-      email: s(rawExtractedData.personal_infos?.mails?.[0]),
-      phone: s(rawExtractedData.personal_infos?.phones?.[0]),
-      linkedin: s(rawExtractedData.personal_infos?.urls?.find((url: string) => url.includes("linkedin.com"))),
-      github: s(rawExtractedData.personal_infos?.urls?.find((url: string) => url.includes("github.com"))),
+      email: s(arr(rawExtractedData.personal_infos?.mails)[0]),
+      phone: s(arr(rawExtractedData.personal_infos?.phones)[0]),
+      linkedin: s(arr(rawExtractedData.personal_infos?.urls).find((url: string) => url.includes("linkedin.com"))),
+      github: s(arr(rawExtractedData.personal_infos?.urls).find((url: string) => url.includes("github.com"))),
       website: s(
-        rawExtractedData.personal_infos?.urls?.find(
+        arr(rawExtractedData.personal_infos?.urls).find(
           (url: string) => !url.includes("linkedin.com") && !url.includes("github.com"),
         ),
       ),
@@ -226,12 +272,13 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
           rawExtractedData.personal_infos?.address?.raw_input_location,
       ),
       summary: s(rawExtractedData.personal_infos?.self_summary),
-      professionalTitle: s(rawExtractedData.work_experience?.entries?.[0]?.title),
+      professionalTitle: s(arr(rawExtractedData.work_experience?.entries)[0]?.title),
       dateOfBirth: s(rawExtractedData.personal_infos?.birth_date),
       nationality: s(rawExtractedData.personal_infos?.nationality),
       gender: s(rawExtractedData.personal_infos?.gender),
     }
-    const workExperience: WorkExperienceEntry[] = (rawExtractedData.work_experience?.entries || []).map((exp: any) => ({
+
+    const workExperience: WorkExperienceEntry[] = arr(rawExtractedData.work_experience?.entries).map((exp: any) => ({
       id: generateId(),
       jobTitle: s(exp.title),
       company: s(exp.company),
@@ -241,7 +288,8 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
       description: s(exp.description),
       industry: s(exp.industry),
     }))
-    const education: EducationEntry[] = (rawExtractedData.education?.entries || []).map((edu: any) => ({
+
+    const education: EducationEntry[] = arr(rawExtractedData.education?.entries).map((edu: any) => ({
       id: generateId(),
       degree: s(edu.title || edu.accreditation),
       institution: s(edu.establishment),
@@ -252,26 +300,47 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
       details: s(edu.description),
       major: edu.title && edu.accreditation ? s(edu.title) : undefined,
     }))
+
     const uniqueSkills = new Map<string, SkillEntry>()
-    if (rawExtractedData.skills && Array.isArray(rawExtractedData.skills)) {
-      rawExtractedData.skills.forEach((skill: any) => {
-        const skillName = s(skill.name)
-        if (skillName && !uniqueSkills.has(skillName.toLowerCase())) {
-          uniqueSkills.set(skillName.toLowerCase(), { id: generateId(), name: skillName, type: s(skill.type) })
-        }
-      })
-    }
+    arr(rawExtractedData.skills).forEach((skill: any) => {
+      const skillName = s(skill.name)
+      if (skillName && !uniqueSkills.has(skillName.toLowerCase())) {
+        uniqueSkills.set(skillName.toLowerCase(), { id: generateId(), name: skillName, type: s(skill.type) })
+      }
+    })
     const skills: SkillEntry[] = Array.from(uniqueSkills.values())
-    const languages: LanguageEntry[] = (rawExtractedData.languages || []).map((lang: any) => ({
+
+    const languages: LanguageEntry[] = arr(rawExtractedData.languages).map((lang: any) => ({
       id: generateId(),
       language: s(lang.name),
-      proficiency: s(lang.proficiency),
+      proficiency: s(lang.level),
     }))
-    const certifications: CertificationEntry[] = (rawExtractedData.certifications || []).map((cert: any) => ({
+
+    const certifications: CertificationEntry[] = arr(rawExtractedData.certifications).map((cert: any) => ({
       id: generateId(),
-      name: s(cert.name),
-      issuingOrganization: s(cert.organization),
-      issueDate: s(cert.issue_date),
+      name: s(cert.name || cert.title),
+      issuingOrganization: s(cert.organization || cert.issuer),
+      issueDate: s(cert.date || cert.issue_date),
+    }))
+
+    const projects: ProjectEntry[] = arr(rawExtractedData.projects).map((proj: any) => ({
+      id: generateId(),
+      name: s(proj.title || proj.name),
+      description: s(proj.description || proj.details),
+      url: s(arr(proj.urls)[0]),
+      technologies: arr(proj.technologies).map((tech: any) => s(tech.name || tech)),
+    }))
+
+    const interests: InterestEntry[] = arr(rawExtractedData.interests).map((interest: any) => ({
+      id: generateId(),
+      name: s(interest.name || interest.interest),
+    }))
+
+    const references: ReferenceEntry[] = arr(rawExtractedData.references).map((ref: any) => ({
+      id: generateId(),
+      name: s(ref.name),
+      contact: s(ref.contact_info || ref.phone || ref.email),
+      relationship: s(ref.relationship),
     }))
 
     return {
@@ -281,9 +350,9 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
       skills,
       languages,
       certifications,
-      projects: [],
-      interests: [],
-      references: [],
+      projects,
+      interests,
+      references,
     }
   }
 
@@ -317,18 +386,13 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         data = JSON.parse(responseText)
       } catch (e) {
         const errorMsg = `Eden AI API Error: ${response.status}. Response: ${responseText.substring(0, 100)}...`
-        if (!response.ok) {
-          console.error("Eden AI Error (not JSON):", responseText)
-          toast.error(errorMsg)
-        } else {
-          console.error("Invalid JSON (status OK):", responseText)
-          toast.error("Invalid JSON response from Eden AI.")
-        }
+        toast.error(errorMsg)
         setLocalError(errorMsg)
         onParsingError(errorMsg)
         setIsUploading(false)
         return
       }
+
       if (!response.ok) {
         const errorMessage = data?.error?.message || data?.detail || `Eden AI API Error: ${response.status}`
         toast.error(`Eden AI API Error: ${errorMessage}`)
@@ -337,20 +401,15 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         setIsUploading(false)
         return
       }
-      const providerKey = Object.keys(data).find((k) => k !== "eden")
+
+      const providerKey = Object.keys(data).find((k) => k !== "eden" && data[k] && data[k].status)
       const providerResult = providerKey ? data[providerKey] : null
+
       if (providerResult && providerResult.status === "success") {
         const transformedData = transformEdenAIData(providerResult)
-        if (transformedData) {
-          onDataParsed(transformedData)
-          setParsedSuccessfully(true)
-          toast.success("Resume parsed!")
-        } else {
-          const em = "Failed to transform parsed data."
-          toast.error(em)
-          setLocalError(em)
-          onParsingError(em)
-        }
+        onDataParsed(transformedData)
+        setParsedSuccessfully(true)
+        toast.success("Resume parsed!")
       } else {
         const ed = providerResult?.error?.message || JSON.stringify(providerResult?.error) || "Provider error."
         const em = `Eden AI parsing failed. Detail: ${ed}`
@@ -395,7 +454,7 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
     }
     setUploadedFile(file)
     await parseResumeWithEdenAI(file)
-    if (event.target) event.target.value = "" // Clear file input after processing
+    if (event.target) event.target.value = ""
   }
 
   const resetUpload = () => {
@@ -420,6 +479,7 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
   ) : (
     <Upload className="h-10 w-10 text-gray-500" />
   )
+
   const uploadText = localError
     ? "Parsing Error"
     : isUploading
@@ -429,49 +489,73 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
         : uploadedFile
           ? "File Selected"
           : "Upload Your Resume/CV"
+
   const uploadDescription = localError
     ? localError
     : isUploading
       ? "This may take a moment..."
       : parsedSuccessfully
         ? uploadedFile?.name
-        : "Our AI will extract your professional information."
+        : "✨ Transform your CV into a professional masterpiece! Our AI-powered parser instantly extracts and organizes your experience, education, skills, and more. Get a structured, ATS-friendly resume that stands out to employers. 🚀"
 
   return (
-    <Card className="w-full shadow-md dark:bg-gray-800">
+    <Card className="w-full shadow-md dark:bg-gray-800 mt-[100px]">
       <CardHeader className="text-center pb-4">
         <CardTitle className="text-xl font-semibold text-teal-600 dark:text-teal-400">AI Resume Parser</CardTitle>
         <CardDescription className="text-sm text-gray-500 dark:text-gray-400">PDF, DOC, DOCX - Max 5MB</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center p-4">
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center w-full">
-          <div className="flex justify-center mb-3">{fileUploadIcon}</div>
-          <p className="text-md font-medium text-gray-700 dark:text-gray-200 mb-1">{uploadText}</p>
-          <p
-            className="text-xs text-gray-500 dark:text-gray-400 mb-3 truncate w-full px-2"
-            title={uploadDescription || undefined}
-          >
-            {uploadDescription}
-          </p>
-          <Input
-            id="file-upload"
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-            accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          />
-          <div className="flex gap-2 justify-center">
-            <label
-              htmlFor="file-upload"
-              className="inline-flex items-center px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-teal-700 cursor-pointer"
+        <div
+          className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 w-full flex flex-col items-center"
+          style={{ minHeight: "410px" }}
+        >
+          <div className="flex flex-col items-center space-y-3 text-center">
+            <div className="flex justify-center">{fileUploadIcon}</div>
+            <p className="text-md font-medium text-gray-700 dark:text-gray-200">{uploadText}</p>
+            <p
+              className="text-sm text-gray-500 dark:text-gray-400 max-w-md leading-relaxed"
+              title={uploadDescription || undefined}
             >
-              <Upload className="mr-1.5 h-4 w-4" /> Choose File
-            </label>
-            {(uploadedFile || localError) && (
-              <Button variant="outline" size="sm" className="px-3 py-2 text-sm" onClick={resetUpload}>
-                Reset
-              </Button>
-            )}
+              {uploadDescription}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-teal-500" />
+                <span>Smart Data Extraction</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-teal-500" />
+                <span>ATS Optimization</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-teal-500" />
+                <span>Professional Formatting</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-teal-500" />
+                <span>Instant Preview</span>
+              </div>
+            </div>
+            <Input
+              id="file-upload"
+              type="file"
+              className="hidden"
+              onChange={handleFileUpload}
+              accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            />
+            <div className="flex gap-2 justify-center">
+              <label
+                htmlFor="file-upload"
+                className="inline-flex items-center px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-teal-700 cursor-pointer"
+              >
+                <Upload className="mr-1.5 h-4 w-4" /> Choose File
+              </label>
+              {(uploadedFile || localError) && (
+                <Button variant="outline" size="sm" className="px-3 py-2 text-sm" onClick={resetUpload}>
+                  Reset
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
@@ -481,7 +565,17 @@ const CVUploadParser: React.FC<CVUploadParserProps> = ({ onDataParsed, onParsing
 
 const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: boolean }> = ({ data, isVisible }) => {
   if (!isVisible || !data) return null
-  const { personalInformation: pi, workExperience, education, skills, languages, certifications } = data
+  const {
+    personalInformation: pi,
+    workExperience,
+    education,
+    skills,
+    languages,
+    certifications,
+    projects,
+    interests,
+    references,
+  } = data
   const formatDate = (dateString?: string, isEndDate = false) => {
     if (!dateString) return isEndDate ? "Present" : "N/A"
     try {
@@ -495,6 +589,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
   }
   const hasValidString = (str: string | undefined | null): str is string =>
     !!str && str.trim() !== "" && str.toLowerCase() !== "n/a" && str.toLowerCase() !== "undefined"
+
   const renderSection = (
     title: string,
     icon: React.ElementType,
@@ -514,6 +609,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
     </AccordionItem>
   )
   const name = hasValidString(pi.name) ? pi.name : `${pi.firstName || ""} ${pi.lastName || ""}`.trim() || "N/A"
+
   return (
     <Card className="sticky top-8 h-[calc(100vh-4rem)] shadow-xl dark:bg-gray-800 flex flex-col">
       <CardHeader className="pb-4 border-b dark:border-gray-700">
@@ -610,7 +706,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
             "Work Experience",
             Briefcase,
             <div className="space-y-4">
-              {workExperience?.map((exp, index) => (
+              {workExperience?.map((exp) => (
                 <div
                   key={exp.id}
                   className="p-2.5 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30"
@@ -642,7 +738,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
             "Education",
             GraduationCap,
             <div className="space-y-3">
-              {education?.map((edu, index) => (
+              {education?.map((edu) => (
                 <div
                   key={edu.id}
                   className="p-2.5 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30"
@@ -674,7 +770,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
             "Skills",
             Lightbulb,
             <div className="flex flex-wrap gap-1.5">
-              {skills?.map((skill, index) => (
+              {skills?.map((skill) => (
                 <Badge
                   key={skill.id}
                   variant="secondary"
@@ -691,7 +787,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
             "Languages",
             LanguagesIcon,
             <ul className="list-disc list-inside pl-1 space-y-0.5">
-              {languages?.map((lang, index) => (
+              {languages?.map((lang) => (
                 <li key={lang.id}>
                   {lang.language}{" "}
                   {hasValidString(lang.proficiency) && (
@@ -707,7 +803,7 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
             "Certifications",
             Award,
             <ul className="space-y-1.5">
-              {certifications?.map((cert, index) => (
+              {certifications?.map((cert) => (
                 <li key={cert.id}>
                   <p className="font-medium text-gray-700 dark:text-gray-200">{cert.name}</p>
                   {hasValidString(cert.issuingOrganization) && (
@@ -722,13 +818,78 @@ const ResumePreviewCard: React.FC<{ data: ParsedResumeData | null; isVisible: bo
             "certifications",
             !certifications || certifications.length === 0,
           )}
+          {renderSection(
+            "Projects",
+            ClipboardList,
+            <div className="space-y-3">
+              {projects?.map((proj) => (
+                <div
+                  key={proj.id}
+                  className="p-2.5 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30"
+                >
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-100">{proj.name}</h4>
+                  {proj.url && (
+                    <p className="text-xs text-teal-600 dark:text-teal-400 hover:underline">
+                      <a href={proj.url} target="_blank" rel="noopener noreferrer">
+                        {proj.url}
+                      </a>
+                    </p>
+                  )}
+                  {hasValidString(proj.description) && (
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-300 whitespace-pre-line">
+                      {proj.description}
+                    </p>
+                  )}
+                  {proj.technologies && proj.technologies.length > 0 && (
+                    <p className="mt-1 text-xs">
+                      <strong>Technologies:</strong> {proj.technologies.join(", ")}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>,
+            "projects",
+            !projects || projects.length === 0,
+          )}
+          {renderSection(
+            "Interests",
+            Heart,
+            <ul className="list-disc list-inside pl-1 space-y-0.5">
+              {interests?.map((interest) => (
+                <li key={interest.id}>{interest.name}</li>
+              ))}
+            </ul>,
+            "interests",
+            !interests || interests.length === 0,
+          )}
+          {renderSection(
+            "References",
+            Users,
+            <div className="space-y-3">
+              {references?.map((ref) => (
+                <div
+                  key={ref.id}
+                  className="p-2.5 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30"
+                >
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-100">{ref.name}</h4>
+                  {hasValidString(ref.relationship) && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{ref.relationship}</p>
+                  )}
+                  {hasValidString(ref.contact) && (
+                    <p className="text-xs text-gray-600 dark:text-gray-300">{ref.contact}</p>
+                  )}
+                </div>
+              ))}
+            </div>,
+            "references",
+            !references || references.length === 0,
+          )}
         </Accordion>
       </CardContent>
     </Card>
   )
 }
 
-// --- Editable Fields Components ---
 interface EditableFieldProps {
   label: string
   id: string
@@ -757,7 +918,7 @@ const EditableField: React.FC<EditableFieldProps> = ({
       <Textarea
         id={id}
         value={value || ""}
-        placeholder={placeholder || ""}
+        placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
         onChange={(e) => onChange(e.target.value)}
         className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:text-gray-200"
         rows={3}
@@ -767,7 +928,7 @@ const EditableField: React.FC<EditableFieldProps> = ({
         type={type}
         id={id}
         value={value || ""}
-        placeholder={placeholder || ""}
+        placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
         onChange={(e) => onChange(e.target.value)}
         className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:text-gray-200"
       />
@@ -839,16 +1000,15 @@ const EditableSectionCard: React.FC<{
   children: React.ReactNode
   actionButtonLabel?: string
   onAction?: () => void
-  isActionDisabled?: boolean
-}> = ({ title, icon: Icon, children, actionButtonLabel, onAction, isActionDisabled = false }) => (
+}> = ({ title, icon: Icon, children, actionButtonLabel, onAction }) => (
   <Card className="shadow-md dark:bg-gray-800">
     <CardHeader>
       <div className="flex justify-between items-center">
         <CardTitle className="text-xl font-semibold text-teal-600 dark:text-teal-400 flex items-center">
           {Icon && <Icon className="mr-2 h-5 w-5" />} {title}
         </CardTitle>
-        {actionButtonLabel && (
-          <Button variant="outline" size="sm" onClick={onAction} disabled={isActionDisabled}>
+        {actionButtonLabel && onAction && (
+          <Button variant="outline" size="sm" onClick={onAction}>
             <PlusCircle className="mr-2 h-4 w-4" /> {actionButtonLabel}
           </Button>
         )}
@@ -858,12 +1018,11 @@ const EditableSectionCard: React.FC<{
   </Card>
 )
 
-const EditableItemCard: React.FC<{
-  title?: string
-  children: React.ReactNode
-  onDelete?: () => void
-  isDeleteDisabled?: boolean
-}> = ({ title, children, onDelete, isDeleteDisabled = false }) => (
+const EditableItemCard: React.FC<{ title?: string; children: React.ReactNode; onDelete?: () => void }> = ({
+  title,
+  children,
+  onDelete,
+}) => (
   <div className="p-4 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30 relative">
     {title && <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-2">{title}</h4>}
     <div className="space-y-3">{children}</div>
@@ -873,7 +1032,6 @@ const EditableItemCard: React.FC<{
         size="icon"
         className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
         onClick={onDelete}
-        disabled={isDeleteDisabled}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
@@ -881,12 +1039,10 @@ const EditableItemCard: React.FC<{
   </div>
 )
 
-// --- DetailedResumeDisplay Component (Editable) ---
 interface DetailedResumeDisplayProps {
   initialData: ParsedResumeData
   onSave: (updatedData: ParsedResumeData) => void
 }
-
 const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialData, onSave }) => {
   const [editableData, setEditableData] = useState<ParsedResumeData>(initialData)
 
@@ -898,30 +1054,178 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
     setEditableData((prev) => ({ ...prev, personalInformation: { ...prev.personalInformation, [field]: value } }))
   }
 
-  const handleListItemChange = <T extends { id: string }>(
-    section: keyof ParsedResumeData,
+  const handleListItemChange = <
+    K extends keyof Omit<ParsedResumeData, "personalInformation">,
+    T extends ParsedResumeData[K][number],
+  >(
+    section: K,
     itemId: string,
     field: keyof T,
-    value: string,
+    value: string | string[], // Allow string array for technologies
   ) => {
     setEditableData((prev) => {
       const list = prev[section] as T[] | undefined
       if (!list) return prev
-      return {
-        ...prev,
-        [section]: list.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)),
-      }
+      return { ...prev, [section]: list.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)) }
     })
   }
 
-  // Placeholder for add/delete item functions (would require more complex state logic)
-  const handleAddItem = (section: keyof ParsedResumeData) => {
-    console.log(`Add item to ${String(section)}`)
-    toast.info("Add item functionality not yet implemented.")
+  type ListSections = Exclude<keyof ParsedResumeData, "personalInformation">
+
+  const handleAddItem = (section: ListSections) => {
+    setEditableData((prev) => {
+      const currentList = (prev[section] as any[]) || []
+      let newItem: any
+      switch (section) {
+        case "workExperience":
+          newItem = createEmptyWorkExperienceEntry()
+          break
+        case "education":
+          newItem = createEmptyEducationEntry()
+          break
+        case "skills":
+          newItem = createEmptySkillEntry()
+          break
+        case "languages":
+          newItem = createEmptyLanguageEntry()
+          break
+        case "certifications":
+          newItem = createEmptyCertificationEntry()
+          break
+        case "projects":
+          newItem = createEmptyProjectEntry()
+          break
+        case "interests":
+          newItem = createEmptyInterestEntry()
+          break
+        case "references":
+          newItem = createEmptyReferenceEntry()
+          break
+        default:
+          return prev
+      }
+      return { ...prev, [section]: [...currentList, newItem] }
+    })
   }
-  const handleDeleteItem = (section: keyof ParsedResumeData, itemId: string) => {
-    console.log(`Delete item ${itemId} from ${String(section)}`)
-    toast.info("Delete item functionality not yet implemented.")
+
+  const handleDeleteItem = (section: ListSections, itemId: string) => {
+    setEditableData((prev) => {
+      const list = prev[section] as Array<{ id: string }> | undefined
+      if (!list) return prev
+      return { ...prev, [section]: list.filter((item) => item.id !== itemId) }
+    })
+  }
+
+  const handleDownloadHtml = async () => {
+    const data = editableData
+    const resumeFileName = `${(data.personalInformation.name || "resume").replace(/\s+/g, "_")}.html`
+
+    let htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${data.personalInformation.name || "Resume"}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; padding: 0; line-height: 1.6; color: #333; background-color: #f9f9f9; }
+    .resume-card { max-width: 800px; margin: auto; padding: 25px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); background-color: #fff; }
+    h1, h2, h3 { color: #2c3e50; }
+    h1 { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom:15px; font-size: 2.2em; }
+    h2 { border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 30px; margin-bottom: 12px; font-size: 1.6em; }
+    .section { margin-bottom: 25px; }
+    .section p, .section li { margin-bottom: 6px; font-size: 1em; }
+    strong { color: #3498db; }
+    ul { padding-left: 20px; list-style-type: disc; }
+    .personal-info-header { text-align: center; margin-bottom: 20px;}
+    .personal-info-header p { margin: 4px 0; font-size: 0.95em; }
+    .item { border: 1px solid #f0f0f0; padding: 18px; border-radius: 6px; margin-bottom:12px; background-color: #fdfdfd;}
+    .item h3 { margin-top:0; font-size: 1.2em; color: #3498db; margin-bottom: 6px;}
+    .item-meta { font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px; }
+    .skills-list span { background-color: #eaf2f8; color: #3498db; padding: 5px 12px; border-radius: 15px; margin: 4px; display: inline-block; font-size: 0.95em; }
+    .tech-list span { background-color: #e8f6f3; color: #1abc9c; padding: 3px 8px; border-radius: 4px; margin: 3px; display: inline-block; font-size: 0.85em; }
+    a { color: #2980b9; text-decoration: none; } a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="resume-card">
+`
+
+    const pi = data.personalInformation
+    htmlContent += `<h1>${pi.name || `${pi.firstName} ${pi.lastName}`}</h1>`
+    htmlContent += `<div class="personal-info-header">`
+    if (pi.professionalTitle) htmlContent += `<p><strong>${pi.professionalTitle}</strong></p>`
+    if (pi.email) htmlContent += `<p><a href="mailto:${pi.email}">${pi.email}</a></p>`
+    if (pi.phone) htmlContent += `<p>${pi.phone}</p>`
+    if (pi.linkedin)
+      htmlContent += `<p><a href="${!pi.linkedin.startsWith("http") ? `https://${pi.linkedin}` : pi.linkedin}" target="_blank" rel="noopener noreferrer">${pi.linkedin}</a></p>`
+    if (pi.github)
+      htmlContent += `<p><a href="${!pi.github.startsWith("http") ? `https://${pi.github}` : pi.github}" target="_blank" rel="noopener noreferrer">${pi.github}</a></p>`
+    if (pi.website)
+      htmlContent += `<p><a href="${!pi.website.startsWith("http") ? `https://${pi.website}` : pi.website}" target="_blank" rel="noopener noreferrer">${pi.website}</a></p>`
+    if (pi.address) htmlContent += `<p>${pi.address}</p>`
+    htmlContent += `</div>`
+
+    if (pi.summary)
+      htmlContent += `<h2>Summary</h2><div class="section"><p>${pi.summary.replace(/\n/g, "<br>")}</p></div>`
+
+    const sections: { title: string; key: ListSections; renderer: (item: any) => string }[] = [
+      {
+        title: "Work Experience",
+        key: "workExperience",
+        renderer: (exp: WorkExperienceEntry) =>
+          `<div class="item"><h3>${exp.jobTitle} - ${exp.company}</h3><p class="item-meta">${exp.startDate} - ${exp.endDate || "Present"} | ${exp.location}${exp.industry ? ` | ${exp.industry}` : ""}</p><p>${exp.description.replace(/\n/g, "<br>")}</p></div>`,
+      },
+      {
+        title: "Education",
+        key: "education",
+        renderer: (edu: EducationEntry) =>
+          `<div class="item"><h3>${edu.degree} - ${edu.institution}</h3><p class="item-meta">${edu.startDate} - ${edu.graduationDate || "Present"} | ${edu.location}${edu.gpa ? ` | GPA: ${edu.gpa}` : ""}</p><p>${edu.details.replace(/\n/g, "<br>")}</p></div>`,
+      },
+      {
+        title: "Projects",
+        key: "projects",
+        renderer: (proj: ProjectEntry) =>
+          `<div class="item"><h3>${proj.name}</h3>${proj.url ? `<p class="item-meta"><a href="${proj.url}" target="_blank" rel="noopener noreferrer">${proj.url}</a></p>` : ""}<p>${proj.description?.replace(/\n/g, "<br>") || ""}</p>${proj.technologies && proj.technologies.length > 0 ? `<p class="tech-list">Technologies: ${proj.technologies.map((t) => `<span>${t}</span>`).join("")}</p>` : ""}</div>`,
+      },
+    ]
+
+    sections.forEach((sec) => {
+      const items = data[sec.key] as any[]
+      if (items && items.length > 0) {
+        htmlContent += `<h2>${sec.title}</h2><div class="section">${items.map(sec.renderer).join("")}</div>`
+      }
+    })
+
+    if (data.skills && data.skills.length > 0)
+      htmlContent += `<h2>Skills</h2><div class="section skills-list"><p>${data.skills.map((s) => `<span>${s.name}${s.type ? ` (${s.type})` : ""}</span>`).join("")}</p></div>`
+    if (data.certifications && data.certifications.length > 0)
+      htmlContent += `<h2>Certifications</h2><div class="section"><ul>${data.certifications.map((c) => `<li><strong>${c.name}</strong>${c.issuingOrganization ? ` from ${c.issuingOrganization}` : ""}${c.issueDate ? ` (${c.issueDate})` : ""}</li>`).join("")}</ul></div>`
+    if (data.languages && data.languages.length > 0)
+      htmlContent += `<h2>Languages</h2><div class="section"><ul>${data.languages.map((l) => `<li>${l.language}${l.proficiency ? ` (${l.proficiency})` : ""}</li>`).join("")}</ul></div>`
+    if (data.interests && data.interests.length > 0)
+      htmlContent += `<h2>Interests</h2><div class="section"><p>${data.interests.map((i) => i.name).join(", ")}</p></div>`
+    if (data.references && data.references.length > 0)
+      htmlContent += `<h2>References</h2><div class="section">${data.references.map((r) => `<div class="item"><p><strong>${r.name}</strong></p>${r.relationship ? `<p><em>${r.relationship}</em></p>` : ""}${r.contact ? `<p>${r.contact}</p>` : ""}</div>`).join("")}</div>`
+
+    htmlContent += `
+  </div>
+</body>
+</html>`
+
+    try {
+      const blob = new Blob([htmlContent], { type: "text/html" })
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(blob)
+      link.download = resumeFileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+      toast.success("Resume downloaded as HTML!")
+    } catch (error) {
+      console.error("Error generating HTML:", error)
+      toast.error("Failed to generate HTML. Check console for details.")
+    }
   }
 
   const pi = editableData.personalInformation
@@ -934,28 +1238,24 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Full Name"
             id="pi-name"
             value={pi.name}
-            placeholder="e.g., Jane Doe"
             onChange={(v) => handlePersonalInfoChange("name", v)}
           />
           <EditableField
             label="Professional Title"
             id="pi-protitle"
             value={pi.professionalTitle}
-            placeholder="e.g., Software Engineer"
             onChange={(v) => handlePersonalInfoChange("professionalTitle", v)}
           />
           <EditableField
             label="ID Number"
             id="pi-id"
             value={pi.idNumber}
-            placeholder="e.g., 9001010000000"
             onChange={(v) => handlePersonalInfoChange("idNumber", v)}
           />
           <EditableField
             label="Date of Birth"
             id="pi-dob"
             value={pi.dateOfBirth}
-            placeholder="e.g., 1990-01-01"
             type="date"
             onChange={(v) => handlePersonalInfoChange("dateOfBirth", v)}
           />
@@ -963,7 +1263,6 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Nationality"
             id="pi-nationality"
             value={pi.nationality}
-            placeholder="e.g., South African"
             onChange={(v) => handlePersonalInfoChange("nationality", v)}
           />
           <EditableRadioGroup
@@ -978,7 +1277,7 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             onChange={(v) => handlePersonalInfoChange("gender", v)}
           />
           <EditableRadioGroup
-            label="Ethnic Group (EE Purposes)"
+            label="Ethnic Group"
             idPrefix="pi-ethnic"
             value={pi.ethnicGroup}
             options={[
@@ -1016,14 +1315,12 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Contact Number (Mobile)"
             id="pi-phone"
             value={pi.phone}
-            placeholder="e.g., +27 82 123 4567"
             onChange={(v) => handlePersonalInfoChange("phone", v)}
           />
           <EditableField
             label="Email Address"
             id="pi-email"
             value={pi.email}
-            placeholder="e.g., jane.doe@example.com"
             type="email"
             onChange={(v) => handlePersonalInfoChange("email", v)}
           />
@@ -1031,16 +1328,14 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Home Address"
             id="pi-address"
             value={pi.address}
-            placeholder="Enter home address"
             isTextarea
             fullWidth
             onChange={(v) => handlePersonalInfoChange("address", v)}
           />
           <EditableField
-            label="Postal Address (if different)"
+            label="Postal Address"
             id="pi-postaladdress"
             value={pi.postalAddress}
-            placeholder="Enter postal address"
             isTextarea
             fullWidth
             onChange={(v) => handlePersonalInfoChange("postalAddress", v)}
@@ -1049,7 +1344,6 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Province"
             id="pi-province"
             value={pi.province}
-            placeholder="Select province"
             options={[
               { label: "Gauteng", value: "GP" },
               { label: "Western Cape", value: "WC" },
@@ -1067,26 +1361,23 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Suburb/Town"
             id="pi-suburb"
             value={pi.suburbTown}
-            placeholder="Enter suburb or town"
             onChange={(v) => handlePersonalInfoChange("suburbTown", v)}
           />
           <EditableField
             label="Postal Code"
             id="pi-postalcode"
             value={pi.postalCode}
-            placeholder="Enter postal code"
             onChange={(v) => handlePersonalInfoChange("postalCode", v)}
           />
           <EditableField
-            label="Contact Number (Alternative)"
+            label="Alternative Contact"
             id="pi-altcontact"
             value={pi.alternativeContact}
-            placeholder="Optional"
             fullWidth
             onChange={(v) => handlePersonalInfoChange("alternativeContact", v)}
           />
           <EditableRadioGroup
-            label="Own Reliable Transport"
+            label="Reliable Transport"
             idPrefix="pi-transport"
             value={pi.reliableTransport}
             options={[
@@ -1099,7 +1390,6 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Driver's License"
             id="pi-license"
             value={pi.driversLicense}
-            placeholder="Select license code"
             options={[
               { label: "None", value: "none" },
               { label: "Code A", value: "A" },
@@ -1126,7 +1416,6 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             label="Notice Period"
             id="pi-notice"
             value={pi.noticePeriod}
-            placeholder="Select notice period"
             options={[
               { label: "Immediately", value: "immediate" },
               { label: "1 Week", value: "1week" },
@@ -1137,7 +1426,7 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
             onChange={(v) => handlePersonalInfoChange("noticePeriod", v)}
           />
           <EditableRadioGroup
-            label="South African Citizenship"
+            label="South African Citizen"
             idPrefix="pi-citizen"
             value={pi.southAfricanCitizen}
             options={[
@@ -1164,35 +1453,30 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
         icon={Briefcase}
         actionButtonLabel="Add Work Experience"
         onAction={() => handleAddItem("workExperience")}
-        isActionDisabled
       >
         {editableData.workExperience.length > 0 ? (
-          editableData.workExperience.map((exp, index) => (
+          editableData.workExperience.map((exp) => (
             <EditableItemCard
               key={exp.id}
-              title={`${exp.jobTitle || "Job Title"} at ${exp.company || "Company"}`}
+              title={`${exp.jobTitle || "New Job"} at ${exp.company || "New Company"}`}
               onDelete={() => handleDeleteItem("workExperience", exp.id)}
-              isDeleteDisabled
             >
               <EditableField
                 label="Job Title"
                 id={`we-${exp.id}-title`}
                 value={exp.jobTitle}
-                placeholder="e.g., Senior Developer"
                 onChange={(v) => handleListItemChange("workExperience", exp.id, "jobTitle", v)}
               />
               <EditableField
                 label="Company"
                 id={`we-${exp.id}-company`}
                 value={exp.company}
-                placeholder="e.g., Tech Solutions Inc."
                 onChange={(v) => handleListItemChange("workExperience", exp.id, "company", v)}
               />
               <EditableField
                 label="Location"
                 id={`we-${exp.id}-location`}
                 value={exp.location}
-                placeholder="e.g., Cape Town"
                 onChange={(v) => handleListItemChange("workExperience", exp.id, "location", v)}
               />
               <div className="grid grid-cols-2 gap-4">
@@ -1215,14 +1499,12 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
                 label="Industry"
                 id={`we-${exp.id}-industry`}
                 value={exp.industry}
-                placeholder="e.g., IT"
                 onChange={(v) => handleListItemChange("workExperience", exp.id, "industry", v)}
               />
               <EditableField
                 label="Description"
                 id={`we-${exp.id}-desc`}
                 value={exp.description}
-                placeholder="Describe your responsibilities and achievements..."
                 isTextarea
                 onChange={(v) => handleListItemChange("workExperience", exp.id, "description", v)}
               />
@@ -1230,7 +1512,7 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
           ))
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No work experience. Click 'Add' to include an entry.
+            No work experience entries. Click 'Add' to include an entry.
           </p>
         )}
       </EditableSectionCard>
@@ -1240,35 +1522,30 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
         icon={GraduationCap}
         actionButtonLabel="Add Education"
         onAction={() => handleAddItem("education")}
-        isActionDisabled
       >
         {editableData.education.length > 0 ? (
-          editableData.education.map((edu, index) => (
+          editableData.education.map((edu) => (
             <EditableItemCard
               key={edu.id}
-              title={`${edu.degree || "Degree"} from ${edu.institution || "Institution"}`}
+              title={`${edu.degree || "New Degree"} from ${edu.institution || "New Institution"}`}
               onDelete={() => handleDeleteItem("education", edu.id)}
-              isDeleteDisabled
             >
               <EditableField
                 label="Degree/Major"
                 id={`edu-${edu.id}-degree`}
                 value={edu.degree}
-                placeholder="e.g., B.Sc. Computer Science"
                 onChange={(v) => handleListItemChange("education", edu.id, "degree", v)}
               />
               <EditableField
                 label="Institution"
                 id={`edu-${edu.id}-institution`}
                 value={edu.institution}
-                placeholder="e.g., University of Example"
                 onChange={(v) => handleListItemChange("education", edu.id, "institution", v)}
               />
               <EditableField
                 label="Location"
                 id={`edu-${edu.id}-location`}
                 value={edu.location}
-                placeholder="e.g., Johannesburg"
                 onChange={(v) => handleListItemChange("education", edu.id, "location", v)}
               />
               <div className="grid grid-cols-2 gap-4">
@@ -1291,14 +1568,12 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
                 label="GPA"
                 id={`edu-${edu.id}-gpa`}
                 value={edu.gpa}
-                placeholder="e.g., 3.8"
                 onChange={(v) => handleListItemChange("education", edu.id, "gpa", v)}
               />
               <EditableField
                 label="Details/Courses"
                 id={`edu-${edu.id}-details`}
                 value={edu.details}
-                placeholder="e.g., Relevant coursework, thesis..."
                 isTextarea
                 onChange={(v) => handleListItemChange("education", edu.id, "details", v)}
               />
@@ -1316,75 +1591,236 @@ const DetailedResumeDisplay: React.FC<DetailedResumeDisplayProps> = ({ initialDa
         icon={Lightbulb}
         actionButtonLabel="Add Skill"
         onAction={() => handleAddItem("skills")}
-        isActionDisabled
       >
         {editableData.skills.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {editableData.skills.map((skill) => (
-              <Badge
-                key={skill.id}
-                variant="secondary"
-                className="bg-teal-100 text-teal-800 dark:bg-teal-700 dark:text-teal-100 relative group pr-6"
-              >
-                {skill.name} {skill.type && `(${skill.type.replace("_", " ")})`}
-                <button
-                  onClick={() => handleDeleteItem("skills", skill.id)}
-                  className="absolute top-0 right-0 p-0.5 text-teal-600 dark:text-teal-200 opacity-0 group-hover:opacity-100 transition-opacity"
-                  disabled
-                >
-                  <Trash2 size={12} />
-                </button>
-              </Badge>
-            ))}
-          </div>
+          editableData.skills.map((skill) => (
+            <EditableItemCard
+              key={skill.id}
+              title={skill.name || "New Skill"}
+              onDelete={() => handleDeleteItem("skills", skill.id)}
+            >
+              <EditableField
+                label="Skill Name"
+                id={`skill-${skill.id}-name`}
+                value={skill.name}
+                onChange={(v) => handleListItemChange("skills", skill.id, "name", v)}
+              />
+              <EditableField
+                label="Skill Type (e.g., Programming Language, Soft Skill)"
+                id={`skill-${skill.id}-type`}
+                value={skill.type}
+                onChange={(v) => handleListItemChange("skills", skill.id, "type", v)}
+              />
+            </EditableItemCard>
+          ))
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">No skills listed. Click 'Add' to include skills.</p>
         )}
-        {/* Simplified skill input for now */}
-        <EditableField
-          label="Add Skill Name"
-          id="new-skill-name"
-          value={""}
-          placeholder="e.g., JavaScript"
-          onChange={(v) => {
-            /* Temp, need proper add logic */
-          }}
-        />
-        <EditableField
-          label="Skill Type (optional)"
-          id="new-skill-type"
-          value={""}
-          placeholder="e.g., Programming Language"
-          onChange={(v) => {
-            /* Temp */
-          }}
-        />
       </EditableSectionCard>
 
-      {/* Other sections (Projects, Certifications, Languages, Interests, References) would follow a similar pattern for editability */}
-      {/* For brevity, they are kept as display-only for now but should be converted like WorkExperience/Education */}
-      <EditableSectionCard title="Projects" icon={ClipboardList} actionButtonLabel="Add Project" isActionDisabled>
-        <p className="text-sm text-gray-500 dark:text-gray-400">No project details. (e.g., E-commerce Platform)</p>
+      <EditableSectionCard
+        title="Projects"
+        icon={ClipboardList}
+        actionButtonLabel="Add Project"
+        onAction={() => handleAddItem("projects")}
+      >
+        {editableData.projects.length > 0 ? (
+          editableData.projects.map((proj) => (
+            <EditableItemCard
+              key={proj.id}
+              title={proj.name || "New Project"}
+              onDelete={() => handleDeleteItem("projects", proj.id)}
+            >
+              <EditableField
+                label="Project Name"
+                id={`proj-${proj.id}-name`}
+                value={proj.name}
+                onChange={(v) => handleListItemChange("projects", proj.id, "name", v)}
+              />
+              <EditableField
+                label="Project URL (Optional)"
+                id={`proj-${proj.id}-url`}
+                value={proj.url}
+                onChange={(v) => handleListItemChange("projects", proj.id, "url", v)}
+              />
+              <EditableField
+                label="Description"
+                id={`proj-${proj.id}-desc`}
+                value={proj.description}
+                isTextarea
+                onChange={(v) => handleListItemChange("projects", proj.id, "description", v)}
+              />
+              <EditableField
+                label="Technologies (comma-separated)"
+                id={`proj-${proj.id}-tech`}
+                value={(proj.technologies || []).join(", ")}
+                onChange={(v) =>
+                  handleListItemChange(
+                    "projects",
+                    proj.id,
+                    "technologies",
+                    v.split(",").map((s) => s.trim()),
+                  )
+                }
+                placeholder="e.g., React, Node.js, Python"
+              />
+            </EditableItemCard>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No projects listed. Click 'Add' to include a project.
+          </p>
+        )}
       </EditableSectionCard>
+
       <EditableSectionCard
         title="Qualifications & Certifications"
         icon={Award}
-        actionButtonLabel="Add Qualification"
-        isActionDisabled
+        actionButtonLabel="Add Certification"
+        onAction={() => handleAddItem("certifications")}
       >
-        <p className="text-sm text-gray-500 dark:text-gray-400">No certifications listed.</p>
-      </EditableSectionCard>
-      <EditableSectionCard title="Languages" icon={LanguagesIcon} actionButtonLabel="Add Language" isActionDisabled>
-        <p className="text-sm text-gray-500 dark:text-gray-400">No languages listed.</p>
-      </EditableSectionCard>
-      <EditableSectionCard title="Interests & Hobbies" icon={Heart} actionButtonLabel="Add Interest" isActionDisabled>
-        <p className="text-sm text-gray-500 dark:text-gray-400">No interests listed.</p>
-      </EditableSectionCard>
-      <EditableSectionCard title="References" icon={Users} actionButtonLabel="Add Reference" isActionDisabled>
-        <p className="text-sm text-gray-500 dark:text-gray-400">No references listed.</p>
+        {editableData.certifications.length > 0 ? (
+          editableData.certifications.map((cert) => (
+            <EditableItemCard
+              key={cert.id}
+              title={cert.name || "New Certification"}
+              onDelete={() => handleDeleteItem("certifications", cert.id)}
+            >
+              <EditableField
+                label="Certification Name"
+                id={`cert-${cert.id}-name`}
+                value={cert.name}
+                onChange={(v) => handleListItemChange("certifications", cert.id, "name", v)}
+              />
+              <EditableField
+                label="Issuing Organization"
+                id={`cert-${cert.id}-org`}
+                value={cert.issuingOrganization}
+                onChange={(v) => handleListItemChange("certifications", cert.id, "issuingOrganization", v)}
+              />
+              <EditableField
+                label="Issue Date"
+                id={`cert-${cert.id}-date`}
+                value={cert.issueDate}
+                type="date"
+                onChange={(v) => handleListItemChange("certifications", cert.id, "issueDate", v)}
+              />
+            </EditableItemCard>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No certifications listed. Click 'Add' to include one.
+          </p>
+        )}
       </EditableSectionCard>
 
-      <div className="flex justify-end mt-8">
+      <EditableSectionCard
+        title="Languages"
+        icon={LanguagesIcon}
+        actionButtonLabel="Add Language"
+        onAction={() => handleAddItem("languages")}
+      >
+        {editableData.languages.length > 0 ? (
+          editableData.languages.map((lang) => (
+            <EditableItemCard
+              key={lang.id}
+              title={lang.language || "New Language"}
+              onDelete={() => handleDeleteItem("languages", lang.id)}
+            >
+              <EditableField
+                label="Language"
+                id={`lang-${lang.id}-lang`}
+                value={lang.language}
+                onChange={(v) => handleListItemChange("languages", lang.id, "language", v)}
+              />
+              <EditableField
+                label="Proficiency (e.g., Native, Fluent, Conversational)"
+                id={`lang-${lang.id}-prof`}
+                value={lang.proficiency}
+                onChange={(v) => handleListItemChange("languages", lang.id, "proficiency", v)}
+              />
+            </EditableItemCard>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No languages listed. Click 'Add' to include one.</p>
+        )}
+      </EditableSectionCard>
+
+      <EditableSectionCard
+        title="Interests & Hobbies"
+        icon={Heart}
+        actionButtonLabel="Add Interest"
+        onAction={() => handleAddItem("interests")}
+      >
+        {editableData.interests.length > 0 ? (
+          editableData.interests.map((interest) => (
+            <EditableItemCard
+              key={interest.id}
+              title={interest.name || "New Interest"}
+              onDelete={() => handleDeleteItem("interests", interest.id)}
+            >
+              <EditableField
+                label="Interest/Hobby"
+                id={`interest-${interest.id}-name`}
+                value={interest.name}
+                onChange={(v) => handleListItemChange("interests", interest.id, "name", v)}
+              />
+            </EditableItemCard>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No interests listed. Click 'Add' to include one.</p>
+        )}
+      </EditableSectionCard>
+
+      <EditableSectionCard
+        title="References"
+        icon={Users}
+        actionButtonLabel="Add Reference"
+        onAction={() => handleAddItem("references")}
+      >
+        {editableData.references.length > 0 ? (
+          editableData.references.map((ref) => (
+            <EditableItemCard
+              key={ref.id}
+              title={ref.name || "New Reference"}
+              onDelete={() => handleDeleteItem("references", ref.id)}
+            >
+              <EditableField
+                label="Reference Name"
+                id={`ref-${ref.id}-name`}
+                value={ref.name}
+                onChange={(v) => handleListItemChange("references", ref.id, "name", v)}
+              />
+              <EditableField
+                label="Relationship"
+                id={`ref-${ref.id}-relationship`}
+                value={ref.relationship}
+                onChange={(v) => handleListItemChange("references", ref.id, "relationship", v)}
+              />
+              <EditableField
+                label="Contact Information (Phone/Email)"
+                id={`ref-${ref.id}-contact`}
+                value={ref.contact}
+                onChange={(v) => handleListItemChange("references", ref.id, "contact", v)}
+              />
+            </EditableItemCard>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No references listed. (Often "Available upon request")
+          </p>
+        )}
+      </EditableSectionCard>
+
+      <div className="flex justify-end items-center gap-4 mt-8">
+        <Button
+          size="lg"
+          variant="outline"
+          className="text-teal-600 border-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:border-teal-400 dark:hover:bg-teal-900/30"
+          onClick={handleDownloadHtml} // Changed from handleDownloadPdf
+        >
+          <Download className="mr-2 h-4 w-4" /> Download HTML {/* Changed text */}
+        </Button>
         <Button size="lg" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => onSave(editableData)}>
           <Save className="mr-2 h-4 w-4" /> Save Resume Data
         </Button>
@@ -1404,6 +1840,9 @@ function App() {
     setIsPreviewVisible(!!data)
     setIsParsing(false)
     setParsingError(null)
+    if (data) {
+      toast.success("Resume data parsed and populated in the editor below.")
+    }
   }
 
   const handleParsingStart = () => {
@@ -1420,10 +1859,8 @@ function App() {
 
   const handleSaveResume = (updatedData: ParsedResumeData) => {
     console.log("Saving updated resume data:", updatedData)
-    // Here you would typically send the data to a backend API
-    // or trigger a download, etc.
-    setParsedResumeData(updatedData) // Update the main state as well
-    toast.success("Resume data saved (logged to console)!")
+    setParsedResumeData(updatedData)
+    toast.success("Resume data updated and logged to console!")
   }
 
   return (
@@ -1435,7 +1872,7 @@ function App() {
             AI Resume Analyzer & Editor
           </h1>
           <p className="text-md md:text-lg text-slate-600 dark:text-slate-400 mt-2">
-            Upload your CV to extract information, then edit and save.
+            Upload your CV to extract information, then edit, save, and download.
           </p>
         </header>
 
@@ -1465,7 +1902,8 @@ function App() {
                   <p className="text-red-500 dark:text-red-400 text-center px-4">{parsingError}</p>
                 </CardContent>
               </Card>
-            ) : isPreviewVisible && parsedResumeData.personalInformation.name ? (
+            ) : isPreviewVisible &&
+              (parsedResumeData.personalInformation.name || parsedResumeData.personalInformation.firstName) ? (
               <ResumePreviewCard data={parsedResumeData} isVisible={true} />
             ) : (
               <Card className="sticky top-8 h-[calc(100vh-4rem)] overflow-y-auto shadow-lg dark:bg-gray-800 hidden lg:flex lg:flex-col lg:items-center lg:justify-center">
